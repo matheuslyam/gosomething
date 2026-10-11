@@ -1,0 +1,16 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+
+* `exposcan` CLI: single-domain exposure scan (resolved IPs, CNAME, CDN
+  heuristic, security headers, ports 80/443) with bilingual EN-US/PT-BR
+  output, `--json`, `--lang`, `--timeout` (default 15s).
+* Table-driven unit tests with DNS/HTTP/dial mocks from day one.
+* Base docs: `AGENTS.md`, 7 ADRs, `docs/architecture.md` with Mermaid diagram,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
