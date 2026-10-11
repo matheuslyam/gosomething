@@ -1,0 +1,21 @@
+# Binaries
+/exposcan
+/exposcan.exe
+*.exe
+/dist/
+
+# Go build cache / test artifacts
+coverage.out
+coverage.html
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
