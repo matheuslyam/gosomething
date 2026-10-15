@@ -16,19 +16,23 @@ go build -o exposcan ./cmd/exposcan
 ./exposcan example.com
 ./exposcan --lang pt exemplo.com
 ./exposcan --json --timeout 10s example.com
+./exposcan --secrets example.com
+./exposcan --secrets --reveal example.com
 ```
 
 ## Usage
 
 ```text
-Usage: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] <domain>
+Usage: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--secrets] [--reveal|-rv] <domain>
 ```
 
 * `--lang en|pt` — output language (default auto: `LANG`/`LC_ALL`, fallback EN).
 * `--timeout` — global timeout, one of `5s|10s|15s|30s` (default `15s`).
-* `--json` — machine-readable output (`Result`, or `ErrorEnvelope` on failure).
-* Exit codes: `0` scan completed (even partial with warnings), `1` network
-  failure or timeout, `2` usage or validation error.
+* `--json` — machine-readable output (`Result` or `SecretsResult`, or `ErrorEnvelope` on failure).
+* `--secrets` — hunt leaked frontend secrets (HTML + inline + up to 10 `.js`, same-origin first) instead of the exposure scan.
+* `--reveal` (`-rv`) — show full secret values; needs `--secrets`. Default is masked (`AKIA…MPLE`) so logs and videos do not leak secrets.
+* Exit codes: `0` scan completed (even partial with warnings, or `--secrets` clean), `1` network
+  failure or timeout, `2` usage or validation error, `3` `--secrets` found at least one potential secret.
 
 Example (human):
 
@@ -53,7 +57,7 @@ HTTP headers (`https://`, fallback to `http://` only on transport failure) →
 CDN heuristic (CNAME suffix + headers) → TCP probes on 80/443 in parallel.
 See `docs/architecture.md` and `docs/adr/`.
 
-Privacy: `Set-Cookie` values are never stored — presence only.
+Privacy: `Set-Cookie` values are never stored — presence only. `--secrets` is masked by default for the same reason; use `--reveal` only on domains you own, never paste full values into issues or videos.
 
 ## Roadmap
 

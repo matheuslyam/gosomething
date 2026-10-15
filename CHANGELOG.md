@@ -20,3 +20,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   commit log); temporary `QA-PLAN*.md` removed.
 * `CONTRIBUTING.md` splits agent workflow from product responsible-use
   disclaimer; `AGENTS.md` states the disclaimer is never an agent refusal rule.
+* `exposcan --secrets`: separate frontend secret hunt (HTML + inline + up to
+  10 `.js` same-origin-first, 2MB cap, masked by default with `--reveal`/`-rv`
+  opt-in, exit `3` on findings, `SecretsResult` JSON envelope).
