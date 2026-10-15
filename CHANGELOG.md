@@ -23,3 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 * `exposcan --secrets`: separate frontend secret hunt (HTML + inline + up to
   10 `.js` same-origin-first, 2MB cap, masked by default with `--reveal`/`-rv`
   opt-in, exit `3` on findings, `SecretsResult` JSON envelope).
+* `exposcan --secrets` coverage: 24 named patterns (AWS incl. ASIA/session
+  IDs, GitHub classic + fine-grained, Slack union, JWT, Stripe live/test,
+  Anthropic exact, HuggingFace, Cohere-context, Firebase, GCP service
+  account, Supabase secret-only, npm, Twilio SID+key, SendGrid, Resend,
+  PlanetScale, JSON/backtick-tolerant generics), each format verified
+  against provider docs or scanner rulesets (see ADR-0009); entropy and git
+  history deferred to phases 2/3.
