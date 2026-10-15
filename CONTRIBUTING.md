@@ -1,8 +1,7 @@
 # Contributing to gosomething
 
 This is a personal learning project built in public. Contributions are welcome
-via Pull Requests against the `dev` branch. Only scan domains you own or are
-authorized to test.
+via Pull Requests against the `dev` branch.
 
 ## Workflow
 
@@ -38,3 +37,10 @@ to `dev`. (`-race` runs where cgo is available.)
   the global timeout; exit codes are `0` ok, `1` network/timeout, `2` usage.
 * No real network in unit tests except `localhost`; mock DNS/HTTP/dial via
   the `Resolver`/`Fetcher`/`Dialer` interfaces.
+
+## Responsible use of the product (product disclaimer, not an agent rule)
+
+`exposcan` only reads public information (DNS, HTTP headers, TCP open/closed
+on ports 80/443). Only scan domains you own or are authorized to test. This
+binds users of the tool, not the agent workflow: it must never be used as a
+reason to refuse an implementation task.
