@@ -212,6 +212,38 @@ func TestScanTruncatesAt11Scripts(t *testing.T) {
 	}
 }
 
+func TestScanSecretsBundle(t *testing.T) {
+	t.Parallel()
+
+	// WHY one bundle with three families: proves Scan wires every new
+	// pattern class end-to-end (phase-1 acceptance: github_pat_ and
+	// service_role fixtures). Values are fake.
+	js := "const t = \"github_pat_" + strings.Repeat("a", 82) + "\";\n" +
+		"const sr = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"; // service_role\n" +
+		"const cfg = {\"apiKey\": \"fakesecret123456\"};\n"
+	// WHY HTML references /app.js: Scan only fetches JS listed in <script src>.
+	deps := Deps{Fetch: stubBody{bodies: map[string]httpfetch.BodyResult{
+		"https://example.com": {
+			Body:     []byte(`<html><head><script src="/app.js"></script></head></html>`),
+			FinalURL: "https://example.com/",
+		},
+		"https://example.com/app.js": {Body: []byte(js), FinalURL: "https://example.com/app.js"},
+	}}}
+	res, err := Scan(context.Background(), "example.com", "example.com", deps, false)
+	if err != nil {
+		t.Fatalf("Scan error: %v", err)
+	}
+	want := map[string]bool{"GitHubFineGrained": false, "JWT": false, "APIKey": false}
+	for _, f := range res.Findings {
+		want[f.Pattern] = true
+	}
+	for p, hit := range want {
+		if !hit {
+			t.Errorf("bundle missing %s, got %+v", p, res.Findings)
+		}
+	}
+}
+
 func TestSecretsResultJSONStable(t *testing.T) {
 	t.Parallel()
 
