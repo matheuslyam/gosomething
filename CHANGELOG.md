@@ -30,3 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   PlanetScale, JSON/backtick-tolerant generics), each format verified
   against provider docs or scanner rulesets (see ADR-0009); entropy and git
   history deferred to phases 2/3.
+* `exposcan --secrets` entropy double verification (phase 2): prefixless
+  collectors (AWS-40, base64≥32, unquoted dotenv, hex-32+) confirmed by
+  calibrated per-rule Shannon thresholds (single `HighEntropy` finding,
+  named patterns win overlaps, masking unchanged). Calibration proved bare
+  matching impossible at zero FP, so collectors require weak context (see
+  ADR-0010 for measured values and known residuals).
