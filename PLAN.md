@@ -1,6 +1,6 @@
 # PLAN.md — Primeiro Build do `gosomething` / `exposcan`
 
-> **Status:** APPROVED v9 — QA `APROVADO (go)` em `QA-PLAN-v9*`. Drift de toolchain documentado (winget `GoLang.Go 1.27.0` vs `go.dev 1.27.2`). Codagem liberada na `dev` com `go1.27.0`.
+> **Status:** APPROVED v9 — QA `APROVADO (go)` com veredito efêmero em log de commit (QA-PLAN*.md temporários removidos; norma viva em `docs/qa-gate/`). Drift de toolchain documentado (winget `GoLang.Go 1.27.0` vs `go.dev 1.27.2`). Codagem liberada na `dev` com `go1.27.0`.
 > **Data:** v1-v8 2026-10-11 / **v9 2026-10-11** (branch `dev`)
 > **EN abstract:** Build plan v9 for `exposcan` in `gosomething`: Go 1.27 CLI (toolchain 1.27.0 installed via winget GoLang.Go; plan previously said 1.27.2 from go.dev — drift documented), 15s global, EN-US default + PT-BR, mocked table tests, minimal lint, docs + 7 ADRs, `go build` only, `dev`. Gate: DoR/DoD + §13 table.
 
@@ -95,7 +95,7 @@ EN `example.com`/PT `exemplo.com`. 1 FQDN; single-label rejeitado. Output §5.9 
 
 ```
 .gitignore (primeiro)
-FIRST.md / QA-PLAN*.md (todos, intocados — inclui QA-PLAN-v6.md/v7.md)
+FIRST.md (histórico, intocado)
 PLAN.md (este; APPROVED em commit próprio)
 README.md / README.pt-BR.md (sem badges) / CONTRIBUTING.md / CHANGELOG.md
 LICENSE / CODE_OF_CONDUCT.md (com contato) / SECURITY.md
@@ -262,12 +262,12 @@ Pré-req §2. `dev`: `.gitignore` → `go.mod` → `i18n→validate→cdn→dns/
 
 `gofmt` vazio, `vet` limpo, `test`+`race` verdes, `golangci` limpo **obrigatório** (com `golangci-lint version` logada), `--help` retorna `0` EN/PT, parse-erro retorna `2`, `NArg!=1` retorna `2`, JSON válido por teste, exits, `T()` fallback, CDN 7/7, humano com chaves, nada `main`.
 
-## 13. Self-QA v9 — regra → status → evidência (responde `QA-PLAN-v7.md`, aprovado)
+## 13. Self-QA v9 — regra → status → evidência (veredito efêmero; QA-PLAN*.md temporários removidos, norma viva em `docs/qa-gate/`)
 
 | ID | Regra | Status | Evidência |
 |---|---|---|---|
 | NArg | IF após `Parse` THEN `NArg!=1 → 2` (`err.noDomain`; `Domain=Arg(0)` ou `""`); peek só idioma | PASS | §5.2 regra + `TestRun_NArg`; WHY ordem fixa |
-| Tree | IF arquivo existe THEN está na árvore | PASS | §4 `QA-PLAN*.md (todos)` cobre v6/v7 |
+| Tree | IF arquivo existe THEN está na árvore | PASS | §4 lista só docs vivos (QA-PLAN*.md temporários removidos) |
 | C1 | IF `--help` THEN `0`; parse-erro THEN `2` | PASS | §5.2 (mantido) |
 | C2 | IF v2 THEN `goimports` em `formatters` | PASS | §4.1 + fetch formatters |
 | G1-G4 | peek/DNS-fatal/first-error/SingleLabel | PASS | §5.2/§5.4/§5.9 (mantidos) |
