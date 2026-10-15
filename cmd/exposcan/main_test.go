@@ -2,9 +2,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/matheuslyam/gosomething/internal/httpfetch"
+	"github.com/matheuslyam/gosomething/internal/i18n"
+	"github.com/matheuslyam/gosomething/internal/secrets"
 )
 
 func runWith(args ...string) (int, string) {
@@ -119,6 +125,84 @@ func TestPeekLang(t *testing.T) {
 		if got := peekLang(tt.args); got != tt.want {
 			t.Errorf("peekLang(%v) = %q, want %q", tt.args, got, tt.want)
 		}
+	}
+}
+
+func TestRunRevealWithoutSecretsReturns2(t *testing.T) {
+	t.Parallel()
+
+	// WHY usage error: --reveal alone would silently do nothing in the
+	// normal scan; failing loud prevents training a leak-by-default habit.
+	if code, _ := runWith("--reveal", "example.com"); code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+	if code, _ := runWith("-rv", "example.com"); code != 2 {
+		t.Errorf("exit = %d, want 2 for -rv alias", code)
+	}
+}
+
+func TestRunSecretsInvalidDomainNoNetwork(t *testing.T) {
+	t.Parallel()
+
+	// WHY no network: validation rejects before any fetch.
+	if code, _ := runWith("--secrets", "http://a.com"); code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+}
+
+type stubSecretsBody struct {
+	html string
+	js   map[string]string
+	err  map[string]error
+}
+
+func (s stubSecretsBody) FetchBody(_ context.Context, url string) (httpfetch.BodyResult, error) {
+	if err, ok := s.err[url]; ok {
+		return httpfetch.BodyResult{}, err
+	}
+	if b, ok := s.js[url]; ok {
+		return httpfetch.BodyResult{Body: []byte(b), FinalURL: url}, nil
+	}
+	return httpfetch.BodyResult{Body: []byte(s.html), FinalURL: url}, nil
+}
+
+func secretsDepsWith(html string, js map[string]string) secrets.Deps {
+	return secrets.Deps{Fetch: stubSecretsBody{html: html, js: js}}
+}
+
+// TestRunSecretsExits proves the feature contract (QA round 1, SC-01/GO-02):
+// findings → 3 masked by default, clean → 0, total failure → 1.
+func TestRunSecretsExits(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	js := map[string]string{"https://example.com/app.js": `var k = "AKIAIOSFODNN7EXAMPLE";`}
+	html := `<html><head><script src="/app.js"></script></head></html>`
+
+	var buf bytes.Buffer
+	if code := runSecretsWith(ctx, &buf, i18n.EN, false, "example.com", "example.com", secretsDepsWith(html, js), false); code != 3 {
+		t.Errorf("with findings exit = %d, want 3", code)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "AWSAccessKey") {
+		t.Errorf("human must show the pattern name, got %q", out)
+	}
+	if strings.Contains(out, "AKIAIOSFODNN7EXAMPLE") {
+		t.Errorf("default must mask the full value, got %q", out)
+	}
+
+	buf.Reset()
+	if code := runSecretsWith(ctx, &buf, i18n.EN, false, "example.com", "example.com", secretsDepsWith("<html></html>", nil), false); code != 0 {
+		t.Errorf("clean exit = %d, want 0", code)
+	}
+
+	buf.Reset()
+	fail := secrets.Deps{Fetch: stubSecretsBody{err: map[string]error{
+		"https://example.com": errors.New("boom"),
+		"http://example.com":  errors.New("boom"),
+	}}}
+	if code := runSecretsWith(ctx, &buf, i18n.EN, false, "example.com", "example.com", fail, false); code != 1 {
+		t.Errorf("total failure exit = %d, want 1", code)
 	}
 }
 

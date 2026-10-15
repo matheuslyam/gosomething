@@ -1,8 +1,10 @@
 // Command exposcan scans a domain for exposure signals: resolved IPs,
-// CDN presence, security headers and open 80/443 ports.
+// CDN presence, security headers and open 80/443 ports. With --secrets it
+// hunts leaked frontend secrets in HTML and JavaScript instead.
 //
-// Exit codes: 0 scan completed (even partial with warnings), 1 network
-// failure or timeout, 2 usage or validation error.
+// Exit codes: 0 scan completed (even partial with warnings, or --secrets
+// with no findings), 1 network failure or timeout, 2 usage or validation
+// error, 3 --secrets found at least one potential secret.
 package main
 
 import (
@@ -21,6 +23,7 @@ import (
 	"github.com/matheuslyam/gosomething/internal/httpfetch"
 	"github.com/matheuslyam/gosomething/internal/i18n"
 	"github.com/matheuslyam/gosomething/internal/ports"
+	"github.com/matheuslyam/gosomething/internal/secrets"
 	"github.com/matheuslyam/gosomething/internal/validate"
 )
 
@@ -56,6 +59,16 @@ func peekLang(args []string) string {
 	return ""
 }
 
+// secretsDeps builds the production body fetcher already capped by the
+// global timeout (no inner timeout may exceed it).
+func secretsDeps(global time.Duration) secrets.Deps {
+	bodyTimeout := 10 * time.Second
+	if global < bodyTimeout {
+		bodyTimeout = global
+	}
+	return secrets.Deps{Fetch: httpfetch.New(bodyTimeout)}
+}
+
 // realDeps builds production collaborators already capped by the global
 // timeout (no inner timeout may exceed it).
 func realDeps(global time.Duration) exposcan.Deps {
@@ -88,10 +101,16 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 		fs.PrintDefaults()
 	}
 	var langFlag, timeoutFlag string
-	var jsonOut bool
+	var jsonOut, secretsMode, reveal bool
 	fs.StringVar(&langFlag, "lang", "", "output language: en|pt (default auto)")
 	fs.StringVar(&timeoutFlag, "timeout", "15s", "global timeout: 5s|10s|15s|30s")
 	fs.BoolVar(&jsonOut, "json", false, "machine-readable JSON output")
+	fs.BoolVar(&secretsMode, "secrets", false, "hunt leaked frontend secrets instead of the exposure scan")
+	fs.BoolVar(&reveal, "reveal", false, "show full secret values (leaks to logs/video)")
+	// WHY alias "rv" shares the same var: Go flag accepts -/-- equivalently,
+	// so this gives --reveal plus the short -rv the user asked for (and --rv
+	// as a bonus). Short flags use one hyphen by CLI convention (--help/-h).
+	fs.BoolVar(&reveal, "rv", false, "alias for --reveal")
 	if err := fs.Parse(args); err != nil {
 		// WHY ErrHelp → 0: asking for help is not an error (Unix convention).
 		if errors.Is(err, flag.ErrHelp) {
@@ -116,6 +135,13 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 			return 2
 		}
 	}
+	// WHY --reveal needs --secrets: the normal scan never handles secrets,
+	// so a stray --reveal there would silently do nothing (or worse, train
+	// users to pass a leak flag by default). Fail loud with exit 2.
+	if reveal && !secretsMode {
+		emitError(stdout, jsonOut, "", i18n.T(lang, "err.badReveal"))
+		return 2
+	}
 	// WHY strict NArg: the contract is exactly 1 FQDN; 0 args and 2+ args
 	// (including flags placed after the positional) both fail instead of
 	// silently using the first.
@@ -135,6 +161,9 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 
 	ctx, cancel := context.WithTimeout(context.Background(), global)
 	defer cancel()
+	if secretsMode {
+		return runSecrets(ctx, stdout, lang, jsonOut, original, ascii, global, reveal)
+	}
 	if !jsonOut {
 		fmt.Fprintln(stdout, i18n.T(lang, "msg.scanning", original))
 	}
@@ -156,6 +185,66 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 		fmt.Fprintln(stdout, i18n.T(lang, "msg.done"))
 	}
 	return 0
+}
+
+// runSecrets executes the --secrets mode with production collaborators.
+func runSecrets(ctx context.Context, stdout io.Writer, lang i18n.Lang, jsonOut bool, original, ascii string, global time.Duration, reveal bool) int {
+	return runSecretsWith(ctx, stdout, lang, jsonOut, original, ascii, secretsDeps(global), reveal)
+}
+
+// runSecretsWith is the testable core of --secrets (Deps injected): exit 0
+// clean, 3 with findings, 1 on total network/timeout failure. Partial
+// single-file failures never abort (skipped inside secrets.Scan).
+// WHY split from runSecrets: run() hardcodes production deps (like the
+// normal scan path), so the exit-3 mapping would otherwise be untestable
+// without real network (QA round 1, SC-01).
+func runSecretsWith(ctx context.Context, stdout io.Writer, lang i18n.Lang, jsonOut bool, original, ascii string, deps secrets.Deps, reveal bool) int {
+	if !jsonOut {
+		fmt.Fprintln(stdout, i18n.T(lang, "msg.scanningSecrets", original))
+	}
+	res, err := secrets.Scan(ctx, original, ascii, deps, reveal)
+	if err != nil {
+		// WHY httpFail (not dnsFail): --secrets never does a DNS lookup, it
+		// fetches HTTP bodies directly; only the CLI knows the language.
+		msg := i18n.T(lang, "err.httpFail", original, err)
+		if httpfetch.IsTimeout(err) {
+			msg = i18n.T(lang, "err.timeout", original)
+		}
+		emitError(stdout, jsonOut, original, msg)
+		return 1
+	}
+	if jsonOut {
+		_ = json.NewEncoder(stdout).Encode(res)
+	} else {
+		printSecretsHuman(stdout, lang, res, reveal)
+		fmt.Fprintln(stdout, i18n.T(lang, "msg.done"))
+	}
+	// WHY exit 3: scripts (conditional video) need a distinct code for
+	// "completed with findings" vs "completed clean" (0).
+	if len(res.Findings) > 0 {
+		return 3
+	}
+	return 0
+}
+
+// printSecretsHuman renders arquivo:linha:padrão plus mask (and full value
+// only with --reveal). Tests assert keys, not full snapshots.
+func printSecretsHuman(stdout io.Writer, lang i18n.Lang, res secrets.SecretsResult, reveal bool) {
+	fmt.Fprintln(stdout, i18n.T(lang, "label.domain")+": "+res.Domain)
+	fmt.Fprintln(stdout, i18n.T(lang, "msg.filesScanned", res.FilesScanned, res.Truncated))
+	if len(res.Findings) == 0 {
+		fmt.Fprintln(stdout, i18n.T(lang, "msg.secretsClean"))
+		return
+	}
+	fmt.Fprintln(stdout, i18n.T(lang, "msg.secretsFound", len(res.Findings)))
+	fmt.Fprintln(stdout, i18n.T(lang, "label.secrets")+":")
+	for _, f := range res.Findings {
+		if reveal && f.Value != "" {
+			fmt.Fprintf(stdout, "  %s:%d:%s %s %s\n", f.File, f.Line, f.Pattern, f.Masked, f.Value)
+		} else {
+			fmt.Fprintf(stdout, "  %s:%d:%s %s\n", f.File, f.Line, f.Pattern, f.Masked)
+		}
+	}
 }
 
 // emitError prints either the JSON envelope or the plain message.
