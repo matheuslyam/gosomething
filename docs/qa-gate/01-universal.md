@@ -14,6 +14,14 @@ An adjective without evidence is not a finding.
   no placeholder in acceptance. WHY: DoD is the only production gate.
 - `AC-03` IF something is out of scope THEN it is declared. WHY: silent
   scope is how regressions hide.
+- `AC-04` IF implementation lands THEN every acceptance item traces to
+  code + test, and every deviation carries Decision + WHY + discarded
+  alternative. Silent scope change = FAIL. WHY: approved plans list N
+  items; code that quietly implements M≠N ships unreviewed contracts.
+- `AC-05` IF a constant decides pass/fail (threshold, floor, limit) THEN
+  its value comes from a committed measurement plus a lock test that fails
+  loud on drift — never from judgment, precedent, or memory. WHY: tuned
+  constants rot silently; a lock turns future drift into a visible red.
 
 ## 2. Scenario and risk mapping
 
@@ -43,7 +51,10 @@ An adjective without evidence is not a finding.
   `B` blocker (breaks build/contract) / `C` contract (wrong exit, schema,
   arity) / `G` grave logic/security (wrong mapping, leak, silent downgrade)
   / `M` medium (operator, normalization, pin detail). WHY: fixed severities
-  remove subjective triage.
+  remove subjective triage. Coverage gaps are `M`, not `C`: an
+  untested-but-correct contract is a missing proof (`M`); `C` requires
+  observably wrong behavior. WHY: conflating them either blocks on trivia
+  or waves through broken contracts.
 - `DF-02` Priority follows severity: `B/C/G` block `GO`; `M` blocks `GO`
   only when more than 2 are open, otherwise `WARN`. WHY: small issues must
   not veto progress, but accumulation must.

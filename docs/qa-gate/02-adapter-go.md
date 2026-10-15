@@ -13,7 +13,8 @@ Use together with `01-universal.md`. Each item maps to a universal ID.
 
 - `GO-02` `run(args,getenv,stdout) int`, `NewFlagSet(ContinueOnError)` +
   `SetOutput(stdout)` + custom `Usage`. `ErrHelp → 0`, parse error → 2,
-  `NArg != 1 → 2` with `Domain = Arg(0)` or `""`. Exits `0/1/2` mapped.
+  `NArg != 1 → 2` with `Domain = Arg(0)` or `""`. Exits `0/1/2` mapped,
+  plus secrets-mode `3` (≥1 finding, never a failure) and `0` clean.
 - `GO-03` `peekLang` handles `--lang pt`, `--lang=pt`, absent, invalid;
   it decides message language only, never flag order validity.
 
@@ -69,3 +70,18 @@ Use together with `01-universal.md`. Each item maps to a universal ID.
   `.golangci.yml` v2 with `goimports` under `formatters`, not `linters`.
 - `GO-14` Work on `dev` only, atomic Conventional Commits with WHY bodies,
   green loop `gofmt → vet → test → race (if cgo) → golangci-lint`.
+
+## Secrets mode and fixture hygiene (`AC-01`, `DF-01=C/G`)
+
+- `GO-15` `--secrets` is a separate mode with its own contract:
+  `SecretsResult` envelope separate from `Result`; values masked by
+  default (`first4…last4`) with full value only under opt-in
+  `--reveal`/`-rv`; `--reveal` without `--secrets` is exit `2`;
+  `Finding.Pattern` gains values only via verified formats (ADR table).
+  WHY: exit 3 drives conditional automation; masked-by-default keeps
+  logs/videos pastable; the envelope split keeps the v1 schema stable.
+- `GO-16` No committed line contains a complete realistic secret: long
+  fakes are built at test runtime (deterministic seeds) or split across
+  string boundaries; committed literals are public examples (`EXAMPLE`
+  suffix, jwt.io token) or uniform filler. WHY: push protection flags
+  partner shapes even when fake — a blocked push was the tuition fee.

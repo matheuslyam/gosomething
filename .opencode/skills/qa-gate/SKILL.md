@@ -7,7 +7,9 @@ description: Deterministic QA gate with auto-recall loop. Use after any plan is 
 
 ## When to self-invoke (mandatory, not optional)
 
-- After writing or changing any `PLAN.md` / feature scope.
+- After writing or changing any `PLAN.md` / feature scope. Scope means
+  the approved plan text wherever it lives (`PLAN.md` or the session
+  transcript), not only files.
 - After implementing, before the green loop commit.
 - WHY auto, not on request: the v1-v7 history proves manual QA is
   skipped under pressure; the gate only works if the planner calls it alone.

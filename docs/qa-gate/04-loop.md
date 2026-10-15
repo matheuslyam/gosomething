@@ -13,6 +13,14 @@ planner writes/updates scope
 WHY planner + QA stay separate steps even when executed by the same
 agent: self-review without the checklist degrades into self-approval.
 
+## Post-hoc gate
+
+- IF a scope landed without a verdict in its trail THEN run the gate on
+  the final tree before the next commit; findings land in a fix-forward
+  commit, and history is rewritten only for commits that never reached
+  remote. WHY: the v1 secrets scope proved an un-gated landing is
+  recoverable — but only via an explicit late gate, never via silence.
+
 ## Anti-infinite-loop
 
 - Hard cap: 5 rounds per scope. Round 6 does not exist; the agent stops
