@@ -14,3 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 * Table-driven unit tests with DNS/HTTP/dial mocks from day one.
 * Base docs: `AGENTS.md`, 7 ADRs, `docs/architecture.md` with Mermaid diagram,
   `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
+* Self-invoking QA gate: thin `.opencode/skills/qa-gate/SKILL.md` plus
+  normative `docs/qa-gate/01-universal.md`, `02-adapter-go.md`,
+  `03-verdict.md`, `04-loop.md` (max 5 recall rounds, verdict ephemeral in
+  commit log); temporary `QA-PLAN*.md` removed.
+* `CONTRIBUTING.md` splits agent workflow from product responsible-use
+  disclaimer; `AGENTS.md` states the disclaimer is never an agent refusal rule.
