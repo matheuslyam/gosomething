@@ -121,11 +121,23 @@ func fetchHTML(ctx context.Context, punycode string, f httpfetch.BodyFetcher) ([
 	return body.Body, base, body.Truncated, nil
 }
 
-// scanContent runs every pattern over content line by line (1-indexed).
+// scanContent runs every pattern over content line by line (1-indexed):
+// named regexps first, then the entropy gate on spans no named pattern
+// claimed (named always wins, so one secret yields exactly one finding).
 func scanContent(file, content string, reveal bool) []Finding {
 	var out []Finding
 	for i, line := range strings.Split(content, "\n") {
-		for _, m := range matchLine(line) {
+		named := matchLineSpans(line)
+		occupied := make([][2]int, 0, len(named))
+		matches := make([]match, 0, len(named))
+		for _, n := range named {
+			occupied = append(occupied, [2]int{n.start, n.end})
+			matches = append(matches, match{pattern: n.pattern, value: n.value})
+		}
+		for _, e := range entropySpans(line, occupied) {
+			matches = append(matches, match{pattern: e.pattern, value: e.value})
+		}
+		for _, m := range matches {
 			f := Finding{
 				File:    file,
 				Line:    i + 1,

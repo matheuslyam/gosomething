@@ -119,13 +119,13 @@ type match struct {
 	value   string
 }
 
-// matchLine returns every pattern hit in a single line.
+// matchLine returns every named-pattern hit in a single line.
+// It stays pure-regexp (no entropy): the gate lives in scanContent, so all
+// TestPatternsTable rows keep testing exactly the named contract.
 func matchLine(line string) []match {
 	var out []match
-	for _, p := range patterns {
-		for _, v := range p.re.FindAllString(line, -1) {
-			out = append(out, match{pattern: p.name, value: v})
-		}
+	for _, s := range matchLineSpans(line) {
+		out = append(out, match{pattern: s.pattern, value: s.value})
 	}
 	return out
 }
