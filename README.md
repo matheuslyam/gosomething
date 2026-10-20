@@ -3,7 +3,7 @@
 `gosomething` is a personal Go + networking lab, built in public from day one.
 `exposcan` is its first tool: a minimal domain exposure scanner — not an nmap.
 
-Given a domain, it reports the resolved IPs, CNAME, CDN heuristic, security
+Given a domain, it reports the resolved IPs, CNAME, CDN heuristic, WAF heuristic, security
 headers and whether ports 80/443 are open. Only scan domains you own or are
 authorized to test.
 
@@ -42,6 +42,7 @@ punycode: example.com
 ips: 93.184.216.34
 cname:
 cdn: unknown
+waf: unknown
 ports: 80=open 443=open
 hsts: true
 csp: false
@@ -54,7 +55,9 @@ headers:
 
 `validate` (IDN via `idna.Lookup`, no network) → DNS (`LookupIPAddr`+CNAME) →
 HTTP headers (`https://`, fallback to `http://` only on transport failure) →
-CDN heuristic (CNAME suffix + headers) → TCP probes on 80/443 in parallel.
+HTTP headers (`https://`, fallback to `http://` only on transport failure) →
+CDN heuristic (CNAME suffix + headers) + WAF heuristic (edge signals, `unknown`
+when absent) → TCP probes on 80/443 in parallel.
 See `docs/architecture.md` and `docs/adr/`.
 
 Privacy: `Set-Cookie` values are never stored — presence only. `--secrets` is masked by default for the same reason; use `--reveal` only on domains you own, never paste full values into issues or videos.
@@ -62,7 +65,7 @@ Privacy: `Set-Cookie` values are never stored — presence only. `--secrets` is 
 ## Roadmap
 
 * `goreleaser` releases, CI, `revive` lint pass, fuller Diátaxis docs.
-* WAF/ASN detection, verbose mode with failure reasons, multi-domain input.
+* ASN detection, verbose mode with failure reasons, multi-domain input.
 
 ## License
 

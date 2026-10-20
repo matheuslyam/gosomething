@@ -265,6 +265,7 @@ func printHuman(stdout io.Writer, lang i18n.Lang, res exposcan.Result) {
 	fmt.Fprintln(stdout, i18n.T(lang, "label.ips")+": "+strings.Join(res.IPs, ", "))
 	fmt.Fprintln(stdout, i18n.T(lang, "label.cname")+": "+res.CNAME)
 	fmt.Fprintln(stdout, i18n.T(lang, "label.cdn")+": "+res.CDN)
+	fmt.Fprintln(stdout, i18n.T(lang, "label.waf")+": "+res.WAF)
 	fmt.Fprintf(stdout, "%s: 80=%s 443=%s\n", i18n.T(lang, "label.ports"), openClosed(res.Ports[80]), openClosed(res.Ports[443]))
 	fmt.Fprintf(stdout, "%s: %v\n", i18n.T(lang, "label.hsts"), res.HSTS)
 	fmt.Fprintf(stdout, "%s: %v\n", i18n.T(lang, "label.csp"), res.CSP)

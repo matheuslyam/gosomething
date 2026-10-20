@@ -30,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   PlanetScale, JSON/backtick-tolerant generics), each format verified
   against provider docs or scanner rulesets (see ADR-0009); entropy and git
   history deferred to phases 2/3.
+* `exposcan` WAF heuristic (ADR-0011): separate `waf` field (`Result.waf`,
+  `waf:` human line, `waf` JSON key, always `"unknown"` when no edge signal)
+  from passive CNAME-suffix + header-presence signals (Cloudflare, Sucuri,
+  Incapsula, DDoS-Guard); no `Set-Cookie` values read.
 * `exposcan --secrets` entropy double verification (phase 2): prefixless
   collectors (AWS-40, base64≥32, unquoted dotenv, hex-32+) confirmed by
   calibrated per-rule Shannon thresholds (single `HighEntropy` finding,

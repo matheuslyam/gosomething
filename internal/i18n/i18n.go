@@ -98,6 +98,7 @@ var messages = map[Lang]map[string]string{
 		"label.ips":           "ips",
 		"label.cname":         "cname",
 		"label.cdn":           "cdn",
+		"label.waf":           "waf",
 		"label.ports":         "ports",
 		"label.headers":       "headers",
 		"label.hsts":          "hsts",
@@ -106,6 +107,7 @@ var messages = map[Lang]map[string]string{
 		"label.secrets":       "secrets",
 		"label.files":         "files",
 		"cdn.unknown":         "unknown",
+		"waf.unknown":         "unknown",
 	},
 	PT: {
 		"usage":               "Uso: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--secrets] [--reveal|-rv] <dominio>",
@@ -133,6 +135,7 @@ var messages = map[Lang]map[string]string{
 		"label.ips":           "ips",
 		"label.cname":         "cname",
 		"label.cdn":           "cdn",
+		"label.waf":           "waf",
 		"label.ports":         "portas",
 		"label.headers":       "cabecalhos",
 		"label.hsts":          "hsts",
@@ -141,5 +144,6 @@ var messages = map[Lang]map[string]string{
 		"label.secrets":       "segredos",
 		"label.files":         "arquivos",
 		"cdn.unknown":         "desconhecido",
+		"waf.unknown":         "desconhecido",
 	},
 }

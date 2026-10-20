@@ -79,6 +79,9 @@ func TestScanSuccess(t *testing.T) {
 	if res.CDN != "Cloudflare" {
 		t.Errorf("CDN = %q, want Cloudflare (cf-ray)", res.CDN)
 	}
+	if res.WAF != "Cloudflare" {
+		t.Errorf("WAF = %q, want Cloudflare (cf-ray edge)", res.WAF)
+	}
 	if !res.HSTS || !res.CSP || !res.ServerPresent {
 		t.Errorf("flags HSTS/CSP/ServerPresent = %v/%v/%v", res.HSTS, res.CSP, res.ServerPresent)
 	}
@@ -198,6 +201,24 @@ func TestScanCanceledContext(t *testing.T) {
 	}
 }
 
+func TestScanWAFUnknownByDefault(t *testing.T) {
+	t.Parallel()
+
+	deps := okDeps()
+	deps.HTTP = stubFetch{httpsRes: httpfetch.HTTPResult{
+		Header:   http.Header{},
+		Status:   200,
+		FinalURL: "https://example.com",
+	}}
+	res, err := Scan(context.Background(), "example.com", "example.com", deps)
+	if err != nil {
+		t.Fatalf("Scan error: %v", err)
+	}
+	if res.WAF != "unknown" {
+		t.Errorf("WAF = %q, want unknown without edge signals", res.WAF)
+	}
+}
+
 // The JSON shape must be stable: exact keys, initialized collections.
 func TestResultJSONTags(t *testing.T) {
 	t.Parallel()
@@ -211,7 +232,7 @@ func TestResultJSONTags(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, k := range []string{"domain", "punycode", "ips", "cname", "cdn", "ports", "headers", "hsts", "csp", "hasSetCookie", "serverPresent", "httpStatus", "finalUrl"} {
+	for _, k := range []string{"domain", "punycode", "ips", "cname", "cdn", "waf", "ports", "headers", "hsts", "csp", "hasSetCookie", "serverPresent", "httpStatus", "finalUrl"} {
 		if _, ok := m[k]; !ok {
 			t.Errorf("missing JSON key %q in %s", k, raw)
 		}

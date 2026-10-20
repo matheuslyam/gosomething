@@ -1,5 +1,5 @@
 // Package exposcan orchestrates a domain exposure scan: DNS, HTTP headers,
-// CDN heuristics and TCP port probes, all bounded by the caller's context.
+// CDN and WAF heuristics and TCP port probes, all bounded by the caller's context.
 package exposcan
 
 import (
@@ -11,6 +11,7 @@ import (
 	"github.com/matheuslyam/gosomething/internal/dns"
 	"github.com/matheuslyam/gosomething/internal/httpfetch"
 	"github.com/matheuslyam/gosomething/internal/ports"
+	"github.com/matheuslyam/gosomething/internal/waf"
 )
 
 // Deps carries the scan collaborators. Interfaces (not concrete types) keep
@@ -36,6 +37,7 @@ type Result struct {
 	IPs           []string          `json:"ips"`
 	CNAME         string            `json:"cname"`
 	CDN           string            `json:"cdn"`
+	WAF           string            `json:"waf"`
 	Ports         map[int]bool      `json:"ports"`
 	Headers       map[string]string `json:"headers"`
 	HSTS          bool              `json:"hsts"`
@@ -61,6 +63,7 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 		Ports:    map[int]bool{80: false, 443: false},
 		Headers:  map[string]string{},
 		CDN:      "unknown",
+		WAF:      "unknown",
 	}
 
 	ips, err := deps.DNS.LookupIPs(ctx, punycode)
@@ -96,6 +99,7 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 			res.HTTPError += "; http: " + httpErr.Error()
 		}
 		res.CDN = cdn.Detect(res.CNAME, nil)
+		res.WAF = waf.Detect(res.CNAME, nil)
 	}
 
 	for p, open := range ports.Check(ctx, punycode, []int{80, 443}, deps.Dial) {
@@ -127,4 +131,5 @@ func applyHTTP(res *Result, httpRes httpfetch.HTTPResult) {
 		res.CSP = httpRes.Header.Get("Content-Security-Policy") != ""
 	}
 	res.CDN = cdn.Detect(res.CNAME, httpRes.Header)
+	res.WAF = waf.Detect(res.CNAME, httpRes.Header)
 }
