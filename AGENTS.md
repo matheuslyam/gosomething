@@ -26,11 +26,20 @@ Use the full Go path when `PATH` lacks it. `-race` where cgo exists.
    better, ask before making it a rule.
 2. **WHY, not WHAT.** Comments explain WHY when non-obvious. Exported symbols
    need English doc comments.
-3. **Webfetch required.** Verify stdlib signatures (params + returns +
+3. **Verify against current docs, via ctx7 CLI first.** Verify stdlib
+   signatures (params + returns +
    conversions) and toolchain/dep versions against current docs, never the
-   model cutoff. Known verified: `go1.27.0`, `x/net v0.61.0`,
+   model cutoff. Prefer the `ctx7` CLI (`find-docs` skill workflow:
+   `library` → `docs`, max 3 calls per question); `webfetch` is the
+   fallback. Every verification cites `primitive + source + date`
+   (e.g. `ctx7 /golang/net 2026-10-20`); a claim without that citation =
+   FAIL. Known verified: `go1.27.0`, `x/net v0.61.0`,
    `golangci-lint v2.4.0`, `LookupIPAddr(ctx,host)`, `url.Error.Timeout()`,
-   `os.IsTimeout`, `NewFlagSet(..., ContinueOnError)`.
+   `os.IsTimeout`, `NewFlagSet(..., ContinueOnError)`. WHY exception: Go
+   stdlib + `golang.org/x/*` verify against `pkg.go.dev` via `webfetch` —
+   the ctx7 index has no `/golang/net` entry (3 `library` queries maxed out
+   2026-10-20, only JS punycode matched); ctx7 leads for third-party
+   libs/frameworks/SDKs.
 4. **Zero placeholders with exact acceptance.** `...`, `vX`, `etc` in a plan
    with exact acceptance = reject.
 5. **QA gate always — enforced, not remembered.** Planner → self-QA checklist

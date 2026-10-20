@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+* Docs verification via `ctx7` CLI (`find-docs` skill, `library` → `docs`)
+  replacing the unused remote MCP entry: every signature/version claim now
+  cites `primitive + source + date` (AGENTS.md §3, GO-01); `npx ctx7*`
+  allowed unattended in opencode permissions.
 * QA harness (ADR-0012, `docs/qa-gate/05-harness.md`): executable gate
   (`scripts/qa-gate.ps1`) stamping the staged tree, `pre-commit`/`commit-msg`
   hooks (installed via `scripts/install-hooks.ps1`), single commit path

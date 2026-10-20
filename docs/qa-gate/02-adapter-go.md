@@ -7,7 +7,11 @@ Use together with `01-universal.md`. Each item maps to a universal ID.
 - `GO-01` Every function/type is pasted complete with conversions
   (`LookupIPAddr(ctx,host)` + `a.IP` loop, `url.Error.Timeout()`,
   `os.IsTimeout`, `NewFlagSet(..., ContinueOnError)`). `Deps` fields typed.
-  WHY: omitted conversions broke compilation in v1/v3.
+  WHY: omitted conversions broke compilation in v1/v3. Every verification
+  cites `primitive + source + date` (`ctx7` CLI preferred, `webfetch`
+  fallback); a signature/version claim without that citation is FAIL.
+  WHY citation: unverified-from-memory signatures caused real build breaks;
+  the primitive (not just the URL) tells the next reader what to re-run.
 
 ## CLI contract (`AC-01`, `SC-02`, `DF-01=C`)
 
