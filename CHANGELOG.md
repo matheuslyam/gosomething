@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+* QA harness (ADR-0012, `docs/qa-gate/05-harness.md`): executable gate
+  (`scripts/qa-gate.ps1`) stamping the staged tree, `pre-commit`/`commit-msg`
+  hooks (installed via `scripts/install-hooks.ps1`), single commit path
+  (`scripts/qa-commit.ps1`), CI backstop (`.github/workflows/qa.yml`, Go
+  1.27.0 exact), opencode permissions denying direct `git commit`. Verdict
+  table before commit is now enforced, not remembered.
 * `exposcan` CLI: single-domain exposure scan (resolved IPs, CNAME, CDN
   heuristic, security headers, ports 80/443) with bilingual EN-US/PT-BR
   output, `--json`, `--lang`, `--timeout` (default 15s).

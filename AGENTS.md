@@ -33,9 +33,15 @@ Use the full Go path when `PATH` lacks it. `-race` where cgo exists.
    `os.IsTimeout`, `NewFlagSet(..., ContinueOnError)`.
 4. **Zero placeholders with exact acceptance.** `...`, `vX`, `etc` in a plan
    with exact acceptance = reject.
-5. **QA gate always.** Planner → self-QA checklist (`rule → status →
+5. **QA gate always — enforced, not remembered.** Planner → self-QA checklist
+   (`rule → status →
    evidence`) → external QA before `go`. Step-by-step by default; parallel
    planner + QA via subagents when complex (>5 files, arch, net/security).
+   Verdict table BEFORE any commit; commits ONLY via
+   `scripts/qa-commit.ps1` (gate stamp + hooks enforce the order, opencode
+   denies direct `git commit`). WHY enforcement over prose: remembered rules
+   were skipped twice on 2026-10-20; code runs every time. Full spec:
+   `docs/qa-gate/05-harness.md`, decision in `docs/adr/0012-qa-harness.md`.
 6. **Green loop before ANY code commit:** `gofmt` → `vet` → `test` → `race`
    (if available) → `golangci-lint`. Red means analyze → fix → retest.
    Known env limits (do not silently weaken the gate, document them):

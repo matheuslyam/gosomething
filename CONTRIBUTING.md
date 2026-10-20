@@ -3,6 +3,16 @@
 This is a personal learning project built in public. Contributions are welcome
 via Pull Requests against the `dev` branch.
 
+## Setup (once per clone — the QA harness)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-hooks.ps1
+```
+
+This installs the versioned git hooks (`pre-commit` stamp check +
+`commit-msg` QA-trailer check). Without them the local gate fails open;
+CI still guards. Full harness spec: `docs/qa-gate/05-harness.md`.
+
 ## Workflow
 
 1. Work on `dev` (or `feature/...` branched from `dev`). Never commit to `main`
@@ -10,6 +20,10 @@ via Pull Requests against the `dev` branch.
 2. Follow [Conventional Commits](https://www.conventionalcommits.org/):
    `feat(scope): ...`, `fix(scope): ...`, `docs: ...`, `chore: ...`, with a
    body explaining WHY the change exists.
+3. Commit ONLY through the harness (direct `git commit` is rejected
+   without a fresh gate stamp):
+   `scripts/qa-commit.ps1 -Subject <s> -Trailer "QA: GO …"`.
+   The commit body must carry the QA verdict line.
 3. Keep diffs small and atomic — one concern per commit for easier review.
 4. Every user-facing string must go through `internal/i18n.T` with both
    EN-US and PT-BR entries (`TestAllKeysHaveBothLangs` enforces this).

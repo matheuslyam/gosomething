@@ -1,0 +1,23 @@
+#!/bin/sh
+# Harness layer 1 (see ADR-0012): a commit is accepted only when the staged
+# tree hash matches a GO stamp written by scripts/qa-gate.ps1. This makes
+# "verdict before commit" an enforced ordering: gate first, commit after.
+# WHY hash the staged tree instead of trusting "gate ran": the gate may have
+# run on different content; only the exact staged bytes are stamped.
+STAMP=".git/qa-stamp"
+if [ ! -f "$STAMP" ]; then
+  echo "BLOCKED: no .git/qa-stamp. Run the gate first:"
+  echo "  powershell -ExecutionPolicy Bypass -File scripts/qa-commit.ps1 -Subject <s> -Trailer <t>"
+  exit 1
+fi
+STAGED="$(git write-tree)" || exit 1
+if ! grep -qxF "tree=$STAGED" "$STAMP"; then
+  echo "BLOCKED: staged tree $STAGED has no GO stamp (content changed after the gate)."
+  echo "Re-run: powershell -ExecutionPolicy Bypass -File scripts/qa-gate.ps1"
+  exit 1
+fi
+if git diff --cached --name-only | grep -q '^QA-PLAN-.*\.md$'; then
+  echo "BLOCKED: per-round QA-PLAN files must never be committed (verdict lives in output + commit log)."
+  exit 1
+fi
+exit 0

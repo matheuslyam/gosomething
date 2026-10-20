@@ -1,0 +1,30 @@
+# Harness layer 2 (see ADR-0012): server-side backstop. Even if local hooks
+# are bypassed (--no-verify, uninstalled hooks), red code cannot merge and
+# stays visibly red. This workflow checks substance (fmt/vet/test/hygiene);
+# the QA trailer metadata is enforced by the local commit-msg hook.
+name: qa
+
+on: [push, pull_request]
+
+jobs:
+  gate:
+    # WHY ubuntu: the Go suite is portable (localhost + dynamic ports) and
+    # this also proves the code is not Windows-coupled; the dev machine stays
+    # on windows/amd64 with the pinned toolchain below.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # WHY 1.27.0 exact: matches the pinned dev toolchain (go.mod `go 1.27`,
+      # installed via winget GoLang.Go 1.27.0); never `stable`/`latest`.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: gofmt (non-mutating)
+        run: test -z "$(gofmt -l cmd internal)"
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: QA-PLAN hygiene
+        run: test -z "$(git status --porcelain | grep -E 'QA-PLAN-.*\.md' || true)"

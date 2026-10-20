@@ -8,5 +8,15 @@
       "type": "remote",
       "url": "https://mcp.context7.com/mcp"
     }
+  },
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git commit *": "deny",
+      "git push *": "ask",
+      "*qa-gate.ps1*": "allow",
+      "*qa-commit.ps1*": "allow",
+      "*install-hooks.ps1*": "allow"
+    }
   }
 }
