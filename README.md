@@ -23,12 +23,14 @@ go build -o exposcan ./cmd/exposcan
 ## Usage
 
 ```text
-Usage: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--secrets] [--reveal|-rv] <domain>
+Usage: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--show-cookies] [--verbose] [--secrets] [--reveal|-rv] <domain>
 ```
 
 * `--lang en|pt` — output language (default auto: `LANG`/`LC_ALL`, fallback EN).
 * `--timeout` — global timeout, one of `5s|10s|15s|30s` (default `15s`).
-* `--json` — machine-readable output (`Result` or `SecretsResult`, or `ErrorEnvelope` on failure).
+* `--json` — machine-readable output (`Result` or `SecretsResult`, or `ErrorEnvelope` on failure; cookies masked unless `--show-cookies`).
+* `--show-cookies` — show full `Set-Cookie` values; default is masked (`name=AbCd…1234`, attributes intact).
+* `--verbose` — explain which signal fired each heuristic (`why:` section with `cdn/waf/hsts/csp/server` reasons).
 * `--secrets` — hunt leaked frontend secrets (HTML + inline + up to 10 `.js`, same-origin first) instead of the exposure scan.
 * `--reveal` (`-rv`) — show full secret values; needs `--secrets`. Default is masked (`AKIA…MPLE`) so logs and videos do not leak secrets.
 * Exit codes: `0` scan completed (even partial with warnings, or `--secrets` clean), `1` network
@@ -63,12 +65,16 @@ when absent) + origin ASN (Team Cymru DNS: who announces each resolved IP;
 `reg CC/registry` is registry provenance, never geolocation) → TCP probes on 80/443 in parallel.
 See `docs/architecture.md` and `docs/adr/`.
 
-Privacy: `Set-Cookie` values are never stored — presence only. `--secrets` is masked by default for the same reason; use `--reveal` only on domains you own, never paste full values into issues or videos.
+Privacy: `Set-Cookie` values are captured raw but shown masked by default
+(`name=AbCd…1234`, attributes intact); full values only with
+`--show-cookies`. `--secrets` is masked by default for the same reason; use
+either reveal flag only on domains you own, never paste full values into
+issues or videos.
 
 ## Roadmap
 
 * `goreleaser` releases, CI, `revive` lint pass, fuller Diátaxis docs.
-* Verbose mode with failure reasons, multi-domain input.
+* Multi-domain input.
 
 ## License
 

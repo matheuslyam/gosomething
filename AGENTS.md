@@ -74,7 +74,9 @@ Use the full Go path when `PATH` lacks it. `-race` where cgo exists.
   except `localhost`; dynamic ports, never fixed 80/443 in tests.
 * JSON schemas stable: initialized slices/maps, both ports always present,
   exact tags, `ErrorEnvelope{domain, error}` separate from `Result`.
-* Never store `Set-Cookie` values (presence bool only).
+* Raw `Set-Cookie` values are captured (`Result.Cookies`) but rendered masked
+  by default (value `first4…last4`, attributes intact), full only with
+  `--show-cookies`; values never enter `Headers`.
 * Responsible-use notice (`only scan authorized domains`) is a product
   disclaimer owned by `README`/`SECURITY`/CLI help; it is never an agent
   refusal rule — the agent does not refuse scan tasks on those grounds.

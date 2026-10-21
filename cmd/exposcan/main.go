@@ -101,10 +101,12 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 		fs.PrintDefaults()
 	}
 	var langFlag, timeoutFlag string
-	var jsonOut, secretsMode, reveal bool
+	var jsonOut, secretsMode, reveal, showCookies, verbose bool
 	fs.StringVar(&langFlag, "lang", "", "output language: en|pt (default auto)")
 	fs.StringVar(&timeoutFlag, "timeout", "15s", "global timeout: 5s|10s|15s|30s")
 	fs.BoolVar(&jsonOut, "json", false, "machine-readable JSON output")
+	fs.BoolVar(&showCookies, "show-cookies", false, "show full Set-Cookie values (masked by default)")
+	fs.BoolVar(&verbose, "verbose", false, "explain which signal fired each heuristic")
 	fs.BoolVar(&secretsMode, "secrets", false, "hunt leaked frontend secrets instead of the exposure scan")
 	fs.BoolVar(&reveal, "reveal", false, "show full secret values (leaks to logs/video)")
 	// WHY alias "rv" shares the same var: Go flag accepts -/-- equivalently,
@@ -179,9 +181,15 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 		return 1
 	}
 	if jsonOut {
+		// WHY mask at the edge like human output: Result.Cookies always
+		// holds raw values (collection), redaction happens on render;
+		// --json without the flag must never exfiltrate sessions to disk.
+		if !showCookies {
+			res.Cookies = exposcan.MaskCookies(res.Cookies)
+		}
 		_ = json.NewEncoder(stdout).Encode(res)
 	} else {
-		printHuman(stdout, lang, res)
+		printHuman(stdout, lang, res, showCookies, verbose)
 		fmt.Fprintln(stdout, i18n.T(lang, "msg.done"))
 	}
 	return 0
@@ -257,9 +265,10 @@ func emitError(stdout io.Writer, jsonOut bool, domain, msg string) {
 }
 
 // printHuman renders the k: v contract (PLAN.md v9 §5.10): fixed keys plus
-// headers and warnings sections. Tests assert keys, not full snapshots,
+// headers, cookies and warnings sections. verbose adds the why section
+// (Reasons, fixed key order). Tests assert keys, not full snapshots,
 // because i18n wording may evolve.
-func printHuman(stdout io.Writer, lang i18n.Lang, res exposcan.Result) {
+func printHuman(stdout io.Writer, lang i18n.Lang, res exposcan.Result, showCookies, verbose bool) {
 	fmt.Fprintln(stdout, i18n.T(lang, "label.domain")+": "+res.Domain)
 	fmt.Fprintln(stdout, i18n.T(lang, "label.punycode")+": "+res.Punycode)
 	fmt.Fprintln(stdout, i18n.T(lang, "label.ips")+": "+strings.Join(res.IPs, ", "))
@@ -280,6 +289,20 @@ func printHuman(stdout io.Writer, lang i18n.Lang, res exposcan.Result) {
 	}
 	if res.HasSetCookie {
 		fmt.Fprintln(stdout, "  set-cookie: (present)")
+	}
+	cookies := res.Cookies
+	if !showCookies {
+		cookies = exposcan.MaskCookies(cookies)
+	}
+	fmt.Fprintln(stdout, i18n.T(lang, "label.cookies")+":")
+	for _, c := range cookies {
+		fmt.Fprintln(stdout, "  "+c)
+	}
+	if verbose {
+		fmt.Fprintln(stdout, i18n.T(lang, "label.why")+":")
+		for _, k := range []string{"cdn", "waf", "hsts", "csp", "server"} {
+			fmt.Fprintln(stdout, "  "+k+": "+res.Reasons[k])
+		}
 	}
 	if res.HTTPError != "" {
 		fmt.Fprintln(stdout, "warnings: "+res.HTTPError)

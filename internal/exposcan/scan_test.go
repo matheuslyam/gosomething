@@ -100,6 +100,21 @@ func TestScanSuccess(t *testing.T) {
 	if len(res.ASNs) != 1 || res.ASNs[0].ASN != 15133 || res.ASNs[0].Org != "EDGECAST" {
 		t.Errorf("ASNs = %+v, want the stubbed EDGECAST record", res.ASNs)
 	}
+	if res.Reasons["cdn"] != "header cf-ray" {
+		t.Errorf("reasons[cdn] = %q, want header cf-ray", res.Reasons["cdn"])
+	}
+	if res.Reasons["waf"] != "header cf-ray" {
+		t.Errorf("reasons[waf] = %q, want header cf-ray", res.Reasons["waf"])
+	}
+	if res.Reasons["hsts"] != "strict-transport-security present (https)" {
+		t.Errorf("reasons[hsts] = %q", res.Reasons["hsts"])
+	}
+	if res.Reasons["csp"] != "content-security-policy present (https)" {
+		t.Errorf("reasons[csp] = %q", res.Reasons["csp"])
+	}
+	if res.Reasons["server"] != "server|x-powered-by present" {
+		t.Errorf("reasons[server] = %q", res.Reasons["server"])
+	}
 	if !res.HSTS || !res.CSP || !res.ServerPresent {
 		t.Errorf("flags HSTS/CSP/ServerPresent = %v/%v/%v", res.HSTS, res.CSP, res.ServerPresent)
 	}
@@ -273,6 +288,52 @@ func TestScanASNMultihoming(t *testing.T) {
 	}
 }
 
+func TestScanCookiesCapturedRaw(t *testing.T) {
+	t.Parallel()
+
+	// WHY raw here: Scan owns collection, presentation owns redaction;
+	// masking happens at render (--show-cookies decides at the edge).
+	h := okHeader()
+	h.Set("Set-Cookie", "session=AbCdEfGh1234; Path=/; Secure; HttpOnly")
+	deps := okDeps()
+	deps.HTTP = stubFetch{httpsRes: httpfetch.HTTPResult{Header: h, Status: 200, FinalURL: "https://example.com"}}
+	res, err := Scan(context.Background(), "example.com", "example.com", deps)
+	if err != nil {
+		t.Fatalf("Scan error: %v", err)
+	}
+	if !res.HasSetCookie {
+		t.Error("expected HasSetCookie")
+	}
+	if len(res.Cookies) != 1 || res.Cookies[0] != "session=AbCdEfGh1234; Path=/; Secure; HttpOnly" {
+		t.Errorf("Cookies = %v, want the raw value", res.Cookies)
+	}
+	if _, ok := res.Headers["set-cookie"]; ok {
+		t.Error("cookie value must never enter Headers")
+	}
+}
+
+func TestScanHTTPFailReasonsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	// WHY explicit asserts: Reasons keys must be identical on the fail path
+	// so verbose output and JSON never depend on which path ran.
+	deps := okDeps()
+	deps.HTTP = stubFetch{httpsErr: errors.New("boom"), httpErr: errors.New("boom")}
+	res, err := Scan(context.Background(), "example.com", "example.com", deps)
+	if err != nil {
+		t.Fatalf("HTTP failure must not abort with DNS ok, got: %v", err)
+	}
+	for k, want := range map[string]string{
+		"cdn": "no signal", "waf": "no signal",
+		"hsts": "not evaluated (no fetch)", "csp": "not evaluated (no fetch)",
+		"server": "absent",
+	} {
+		if res.Reasons[k] != want {
+			t.Errorf("Reasons[%q] = %q, want %q", k, res.Reasons[k], want)
+		}
+	}
+}
+
 // The JSON shape must be stable: exact keys, initialized collections.
 func TestResultJSONTags(t *testing.T) {
 	t.Parallel()
@@ -286,7 +347,7 @@ func TestResultJSONTags(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, k := range []string{"domain", "punycode", "ips", "cname", "cdn", "waf", "asns", "ports", "headers", "hsts", "csp", "hasSetCookie", "serverPresent", "httpStatus", "finalUrl"} {
+	for _, k := range []string{"domain", "punycode", "ips", "cname", "cdn", "waf", "asns", "cookies", "reasons", "ports", "headers", "hsts", "csp", "hasSetCookie", "serverPresent", "httpStatus", "finalUrl"} {
 		if _, ok := m[k]; !ok {
 			t.Errorf("missing JSON key %q in %s", k, raw)
 		}

@@ -50,8 +50,11 @@ Use together with `01-universal.md`. Each item maps to a universal ID.
 
 ## Privacy and product scope (`DF-01=G`, not an agent rule)
 
-- `GO-09` `Set-Cookie` values never stored (presence bool only); headers
-  allowlist enforced. Responsible-use notice lives in the product
+- `GO-09` Raw `Set-Cookie` values are captured into `Result.Cookies` but
+  rendered masked by default (`name=first4…last4`, attributes intact),
+  full only under `--show-cookies` (ADR-0014); `--json` follows the same
+  rule (masked unless the flag). Values never enter `Headers` (allowlist
+  test guards). Responsible-use notice lives in the product
   (`README`/`SECURITY`/CLI help). The agent never refuses a scan task.
 
 ## i18n (`AC-02`)

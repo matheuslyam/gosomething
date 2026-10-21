@@ -45,7 +45,9 @@ type Result struct {
 	HSTS          bool              `json:"hsts"`
 	CSP           bool              `json:"csp"`
 	HasSetCookie  bool              `json:"hasSetCookie"`
+	Cookies       []string          `json:"cookies"`
 	ServerPresent bool              `json:"serverPresent"`
+	Reasons       map[string]string `json:"reasons"`
 	HTTPStatus    int               `json:"httpStatus"`
 	FinalURL      string            `json:"finalUrl"`
 	HTTPError     string            `json:"httpError,omitempty"`
@@ -67,8 +69,9 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 		CDN:      "unknown",
 		WAF:      "unknown",
 		ASNs:     []dns.ASNRecord{},
+		Cookies:  []string{},
+		Reasons:  map[string]string{},
 	}
-
 	ips, err := deps.DNS.LookupIPs(ctx, punycode)
 	if err != nil {
 		return Result{}, fmt.Errorf("dns lookup %s: %w", punycode, err)
@@ -123,8 +126,14 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 		} else {
 			res.HTTPError += "; http: " + httpErr.Error()
 		}
-		res.CDN = cdn.Detect(res.CNAME, nil)
-		res.WAF = waf.Detect(res.CNAME, nil)
+		res.CDN, res.Reasons["cdn"] = cdn.Detect(res.CNAME, nil)
+		res.WAF, res.Reasons["waf"] = waf.Detect(res.CNAME, nil)
+		// WHY explicit here too: Reasons keys are deterministic (always
+		// cdn/waf/hsts/csp/server) so verbose output and JSON never depend
+		// on which path ran.
+		res.Reasons["hsts"] = "not evaluated (no fetch)"
+		res.Reasons["csp"] = "not evaluated (no fetch)"
+		res.Reasons["server"] = "absent"
 	}
 
 	for p, open := range ports.Check(ctx, punycode, []int{80, 443}, deps.Dial) {
@@ -148,6 +157,12 @@ func applyHTTP(res *Result, httpRes httpfetch.HTTPResult) {
 	if _, ok := httpRes.Header["Set-Cookie"]; ok {
 		res.HasSetCookie = true
 	}
+	// WHY raw capture here, masking at render: Scan owns collection (like
+	// Headers), presentation owns redaction; the --show-cookies flag then
+	// decides at the edge, and JSON follows the same rule as human output.
+	for _, c := range httpRes.Header["Set-Cookie"] {
+		res.Cookies = append(res.Cookies, c)
+	}
 	res.ServerPresent = res.Headers["server"] != "" || res.Headers["x-powered-by"] != ""
 	// WHY https-only: HSTS/CSP are meaningful for TLS responses; an http
 	// fallback reporting them would be misleading, so they stay false there.
@@ -155,6 +170,25 @@ func applyHTTP(res *Result, httpRes httpfetch.HTTPResult) {
 		res.HSTS = httpRes.Header.Get("Strict-Transport-Security") != ""
 		res.CSP = httpRes.Header.Get("Content-Security-Policy") != ""
 	}
-	res.CDN = cdn.Detect(res.CNAME, httpRes.Header)
-	res.WAF = waf.Detect(res.CNAME, httpRes.Header)
+	res.CDN, res.Reasons["cdn"] = cdn.Detect(res.CNAME, httpRes.Header)
+	res.WAF, res.Reasons["waf"] = waf.Detect(res.CNAME, httpRes.Header)
+	isHTTPS := strings.HasPrefix(strings.ToLower(httpRes.FinalURL), "https://")
+	// WHY explicit reasons instead of re-deriving in main: the rule lives
+	// once, beside the flag it explains; verbose output only prints them.
+	res.Reasons["hsts"] = "not evaluated (http)"
+	res.Reasons["csp"] = "not evaluated (http)"
+	if isHTTPS {
+		res.Reasons["hsts"] = "strict-transport-security absent (https)"
+		if res.HSTS {
+			res.Reasons["hsts"] = "strict-transport-security present (https)"
+		}
+		res.Reasons["csp"] = "content-security-policy absent (https)"
+		if res.CSP {
+			res.Reasons["csp"] = "content-security-policy present (https)"
+		}
+	}
+	res.Reasons["server"] = "absent"
+	if res.ServerPresent {
+		res.Reasons["server"] = "server|x-powered-by present"
+	}
 }

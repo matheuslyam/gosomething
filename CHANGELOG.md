@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+* `exposcan --show-cookies` + `--verbose` (ADRs 0014/0015): raw `Set-Cookie`
+  capture (`Result.cookies`) masked by default (`name=first4…last4`,
+  attributes intact), full only with the flag (`--json` follows the same
+  rule, values never enter `Headers`); `Result.reasons` with the exact
+  firing signal per heuristic (`cdn/waf/hsts/csp/server`), printed in the
+  `why:` section under `--verbose` and always present in JSON.
 * `exposcan` origin-ASN enrichment (ADR-0013): `Result.asns` per-IP list
   (`ip -> AS<n> (org, prefix, reg CC/registry)`) from Team Cymru DNS,
   failures tolerated to `unknown`; CC/registry shown as registry provenance,

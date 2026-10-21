@@ -24,12 +24,14 @@ go build -o exposcan ./cmd/exposcan
 ## Uso
 
 ```text
-Uso: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--secrets] [--reveal|-rv] <dominio>
+Uso: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--show-cookies] [--verbose] [--secrets] [--reveal|-rv] <dominio>
 ```
 
 * `--lang en|pt` — idioma (padrão automático: `LANG`/`LC_ALL`, fallback EN).
 * `--timeout` — timeout global, um de `5s|10s|15s|30s` (padrão `15s`).
-* `--json` — saída para máquinas (`Result` ou `SecretsResult`, ou `ErrorEnvelope` em falha).
+* `--json` — saída para máquinas (`Result` ou `SecretsResult`, ou `ErrorEnvelope` em falha; cookies mascarados sem `--show-cookies`).
+* `--show-cookies` — mostra valores completos de `Set-Cookie`; padrão é mascarado (`nome=AbCd…1234`, atributos intactos).
+* `--verbose` — explica qual sinal disparou cada heurística (seção `motivo:` com motivos `cdn/waf/hsts/csp/server`).
 * `--secrets` — caça segredos vazados no frontend (HTML + inline + até 10 `.js`, mesma origem primeiro) em vez do scan de exposição.
 * `--reveal` (`-rv`) — mostra os valores completos; precisa de `--secrets`. O padrão é mascarado (`AKIA…MPLE`) para não vazar em logs e vídeos.
 * Exit codes: `0` concluído (mesmo parcial com avisos, ou `--secrets` limpo), `1` falha de
@@ -44,12 +46,15 @@ heurística de CDN (sufixo CNAME + headers) + heurística de WAF (sinais de edge
 `reg CC/registry` é proveniência de registro, nunca geolocalização) → probes TCP em 80/443 em paralelo.
 Veja `docs/architecture.md` e `docs/adr/`.
 
-Privacidade: valores de `Set-Cookie` nunca são guardados — só presença. `--secrets` é mascarado por padrão pelo mesmo motivo; use `--reveal` só em domínios seus, nunca cole valores completos em issues ou vídeos.
+Privacidade: valores de `Set-Cookie` são capturados brutos, mas exibidos mascarados por padrão
+(`nome=AbCd…1234`, atributos intactos); valores completos só com
+`--show-cookies`. `--secrets` é mascarado por padrão pelo mesmo motivo; use
+qualquer flag de revelação só em domínios seus, nunca cole valores completos em issues ou vídeos.
 
 ## Roteiro
 
 * Releases com `goreleaser`, CI, passo de lint `revive`, docs Diátaxis completas.
-* Modo verboso com motivos, entrada multi-domínios.
+* Entrada multi-domínios.
 
 ## Licença
 

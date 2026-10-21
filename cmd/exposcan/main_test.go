@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/matheuslyam/gosomething/internal/exposcan"
 	"github.com/matheuslyam/gosomething/internal/httpfetch"
 	"github.com/matheuslyam/gosomething/internal/i18n"
 	"github.com/matheuslyam/gosomething/internal/secrets"
@@ -203,6 +204,39 @@ func TestRunSecretsExits(t *testing.T) {
 	}}}
 	if code := runSecretsWith(ctx, &buf, i18n.EN, false, "example.com", "example.com", fail, false); code != 1 {
 		t.Errorf("total failure exit = %d, want 1", code)
+	}
+}
+
+func TestPrintHumanCookiesMaskedByDefault(t *testing.T) {
+	t.Parallel()
+
+	res := exposcan.Result{
+		Domain: "example.com", IPs: []string{},
+		Ports:   map[int]bool{80: false, 443: false},
+		Headers: map[string]string{}, Cookies: []string{"session=AbCdEfGh1234; Path=/; Secure"},
+		Reasons: map[string]string{"cdn": "no signal", "waf": "no signal", "hsts": "not evaluated (http)", "csp": "not evaluated (http)", "server": "absent"},
+	}
+	var buf bytes.Buffer
+	printHuman(&buf, i18n.EN, res, false, false)
+	out := buf.String()
+	if !strings.Contains(out, "session=AbCd…1234; Path=/; Secure") {
+		t.Errorf("expected masked cookie, got %q", out)
+	}
+	if strings.Contains(out, "AbCdEfGh1234") {
+		t.Errorf("full value leaked in default output: %q", out)
+	}
+	if strings.Contains(out, "why cdn:") {
+		t.Errorf("verbose section must not print without --verbose: %q", out)
+	}
+
+	buf.Reset()
+	printHuman(&buf, i18n.EN, res, true, true)
+	out = buf.String()
+	if !strings.Contains(out, "session=AbCdEfGh1234; Path=/; Secure") {
+		t.Errorf("expected full cookie with --show-cookies, got %q", out)
+	}
+	if !strings.Contains(out, "cdn: no signal") {
+		t.Errorf("expected why section with --verbose, got %q", out)
 	}
 }
 

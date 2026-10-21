@@ -13,38 +13,65 @@ import (
 	"strings"
 )
 
-// Detect returns the provider name or "unknown".
+// Detect returns the provider name plus the reason that fired, for verbose
+// output. Reasons name the exact signal ("cname suffix .sucuri.net",
+// "header x-sucuri-id") or "no signal".
 //
 // All CNAME matching is HasSuffix on the lowercased, dot-trimmed name (never
 // Contains — "notakamai.com" must not match). Header lookup uses Get, which
 // is already case-insensitive, so no manual lowering of keys.
 // Verified 2026-10-20: func (h Header) Get(key string) string per
 // https://pkg.go.dev/net/http#Header.Get (go1.27).
-func Detect(cname string, h http.Header) string {
+func Detect(cname string, h http.Header) (string, string) {
 	c := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(cname), "."))
-	hasSuffix := func(suffixes ...string) bool {
+	suffix := func(suffixes ...string) (string, bool) {
 		for _, s := range suffixes {
 			if strings.HasSuffix(c, s) {
-				return true
+				return s, true
 			}
 		}
-		return false
+		return "", false
 	}
-	switch {
-	case hasSuffix(".cloudflare.net") || h.Get("Cf-Ray") != "" || h.Get("Cf-Mitigated") != "" ||
-		strings.Contains(strings.ToLower(h.Get("Server")), "cloudflare"):
+	header := func(keys ...string) (string, bool) {
+		for _, k := range keys {
+			if h.Get(k) != "" {
+				return strings.ToLower(k), true
+			}
+		}
+		return "", false
+	}
+	// WHY sequential ifs (not else-if): a present-but-unmatched signal must
+	// not block later checks (mirrors cdn.Detect).
+	if s, ok := suffix(".cloudflare.net"); ok {
+		return "Cloudflare", "cname suffix " + s
+	}
+	if k, ok := header("Cf-Ray", "Cf-Mitigated"); ok {
+		return "Cloudflare", "header " + k
+	}
+	if strings.Contains(strings.ToLower(h.Get("Server")), "cloudflare") {
 		// WHY Contains only for the Server value here: the token
 		// "cloudflare" is distinctive (unlike generic "akamai"), and
 		// Cloudflare documents Server: cloudflare on proxied responses.
 		// Cf-Ray proves proxied edge; Cf-Mitigated proves a mitigation ran.
-		return "Cloudflare"
-	case hasSuffix(".sucuri.net") || h.Get("X-Sucuri-Id") != "" || h.Get("X-Sucuri-Cache") != "":
-		return "Sucuri"
-	case hasSuffix(".incapsula.com") || h.Get("X-Iinfo") != "":
-		return "Incapsula"
-	case hasSuffix(".ddos-guard.net") || h.Get("X-Ddos-Guard") != "":
-		return "DDoS-Guard"
-	default:
-		return "unknown"
+		return "Cloudflare", "server contains cloudflare"
 	}
+	if s, ok := suffix(".sucuri.net"); ok {
+		return "Sucuri", "cname suffix " + s
+	}
+	if k, ok := header("X-Sucuri-Id", "X-Sucuri-Cache"); ok {
+		return "Sucuri", "header " + k
+	}
+	if s, ok := suffix(".incapsula.com"); ok {
+		return "Incapsula", "cname suffix " + s
+	}
+	if k, ok := header("X-Iinfo"); ok {
+		return "Incapsula", "header " + k
+	}
+	if s, ok := suffix(".ddos-guard.net"); ok {
+		return "DDoS-Guard", "cname suffix " + s
+	}
+	if k, ok := header("X-Ddos-Guard"); ok {
+		return "DDoS-Guard", "header " + k
+	}
+	return "unknown", "no signal"
 }
