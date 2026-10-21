@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/matheuslyam/gosomething/internal/cdn"
 	"github.com/matheuslyam/gosomething/internal/dns"
@@ -38,6 +39,7 @@ type Result struct {
 	CNAME         string            `json:"cname"`
 	CDN           string            `json:"cdn"`
 	WAF           string            `json:"waf"`
+	ASNs          []dns.ASNRecord   `json:"asns"`
 	Ports         map[int]bool      `json:"ports"`
 	Headers       map[string]string `json:"headers"`
 	HSTS          bool              `json:"hsts"`
@@ -64,6 +66,7 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 		Headers:  map[string]string{},
 		CDN:      "unknown",
 		WAF:      "unknown",
+		ASNs:     []dns.ASNRecord{},
 	}
 
 	ips, err := deps.DNS.LookupIPs(ctx, punycode)
@@ -72,6 +75,28 @@ func Scan(ctx context.Context, domain, punycode string, deps Deps) (Result, erro
 	}
 	for _, ip := range ips {
 		res.IPs = append(res.IPs, ip.String())
+	}
+	// WHY indexed slots instead of mutex-append: per-IP parallelism with a
+	// fixed index per IP keeps output order deterministic (same order as
+	// IPs) without a post-hoc sort, so tests assert exact sequences.
+	// WHY failure tolerated: enrichment is best-effort (like CNAME); only
+	// the IP set is fatal. Every IP stays accounted for via UnknownASN.
+	asnSlots := make([][]dns.ASNRecord, len(ips))
+	var wg sync.WaitGroup
+	for i, ip := range ips {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			recs, err := deps.DNS.LookupASN(ctx, ip)
+			if err != nil {
+				recs = []dns.ASNRecord{dns.UnknownASN(ip)}
+			}
+			asnSlots[i] = recs
+		}()
+	}
+	wg.Wait()
+	for _, recs := range asnSlots {
+		res.ASNs = append(res.ASNs, recs...)
 	}
 	// WHY CNAME failure tolerated: a missing CNAME is normal (apex domains);
 	// only the IP set is fatal.

@@ -5,12 +5,14 @@ Minimal flow for `exposcan` v1 plus `--secrets` mode (see `docs/adr/`).
 ```mermaid
 flowchart LR
     CLI["cmd/exposcan\nflags + validate"] --> DNS["dns.Resolver\nLookupIPs + CNAME"]
+    DNS --> ASN["dns.LookupASN\nCymru origin+asn zones"]
     DNS --> HTTP["httpfetch.Fetcher\nhttps, fallback http"]
     HTTP --> CDN["cdn.Detect\nCNAME + headers"]
     HTTP --> WAF["waf.Detect\nCNAME + headers"]
     HTTP --> PORTS["ports.Check\n80 + 443 parallel"]
     CDN --> OUT["Result | ErrorEnvelope\n human | --json"]
     WAF --> OUT
+    ASN --> OUT
     PORTS --> OUT
     CLI --> SEC["secrets.Scan\nHTML+inline+10 JS"]
     SEC --> BODY["httpfetch.BodyFetcher\n2MB cap"]

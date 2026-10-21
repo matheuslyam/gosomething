@@ -4,7 +4,7 @@
 desde o primeiro dia. `exposcan` é sua primeira ferramenta: um scanner mínimo
 de exposição de domínios — não um nmap.
 
-Dado um domínio, ele mostra os IPs resolvidos, CNAME, heurística de CDN, heurística de WAF,
+Dado um domínio, ele mostra os IPs resolvidos, CNAME, heurística de CDN, heurística de WAF, ASN de origem (quem anuncia a rota),
 headers de segurança e se as portas 80/443 estão abertas. Escaneie apenas
 domínios seus ou com autorização.
 
@@ -40,7 +40,8 @@ Uso: exposcan [--lang en|pt] [--timeout 5s|10s|15s|30s] [--json] [--secrets] [--
 `validate` (IDN via `idna.Lookup`, sem rede) → DNS (`LookupIPAddr`+CNAME) →
 headers HTTP (`https://`, fallback para `http://` só em falha de transporte) →
 heurística de CDN (sufixo CNAME + headers) + heurística de WAF (sinais de edge,
-`unknown` quando ausente) → probes TCP em 80/443 em paralelo.
+`unknown` quando ausente) + ASN de origem (DNS do Team Cymru: quem anuncia cada IP;
+`reg CC/registry` é proveniência de registro, nunca geolocalização) → probes TCP em 80/443 em paralelo.
 Veja `docs/architecture.md` e `docs/adr/`.
 
 Privacidade: valores de `Set-Cookie` nunca são guardados — só presença. `--secrets` é mascarado por padrão pelo mesmo motivo; use `--reveal` só em domínios seus, nunca cole valores completos em issues ou vídeos.
@@ -48,7 +49,7 @@ Privacidade: valores de `Set-Cookie` nunca são guardados — só presença. `--
 ## Roteiro
 
 * Releases com `goreleaser`, CI, passo de lint `revive`, docs Diátaxis completas.
-* Detecção ASN, modo verboso com motivos, entrada multi-domínios.
+* Modo verboso com motivos, entrada multi-domínios.
 
 ## Licença
 

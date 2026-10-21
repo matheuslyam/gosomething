@@ -13,6 +13,11 @@ type Resolver interface {
 	LookupIPs(ctx context.Context, host string) ([]net.IP, error)
 	// LookupCNAME returns the canonical name for host ("" when none).
 	LookupCNAME(ctx context.Context, host string) (string, error)
+	// LookupASN returns the origin-ASN records for ip via Team Cymru DNS.
+	// WHY on the same interface instead of a new one: ASN is DNS data from
+	// the same collaborator; a second interface would double stub surface
+	// in every scan test for one DNS round-trip.
+	LookupASN(ctx context.Context, ip net.IP) ([]ASNRecord, error)
 }
 
 // NetResolver is the production Resolver backed by the default resolver.

@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+* `exposcan` origin-ASN enrichment (ADR-0013): `Result.asns` per-IP list
+  (`ip -> AS<n> (org, prefix, reg CC/registry)`) from Team Cymru DNS,
+  failures tolerated to `unknown`; CC/registry shown as registry provenance,
+  never geolocation.
 * Docs verification via `ctx7` CLI (`find-docs` skill, `library` → `docs`)
   replacing the unused remote MCP entry: every signature/version claim now
   cites `primitive + source + date` (AGENTS.md §3, GO-01); `npx ctx7*`
